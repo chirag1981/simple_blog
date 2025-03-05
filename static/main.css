@@ -6,18 +6,12 @@ body {
 }
 
 /* Form */
-form {
-    padding: 20px;
-    border: 2px solid #ff5f00; /* Deep orange border */
-    border-radius: 10px;
-    box-shadow: 0 0 10px 5px rgba(0, 0, 0, 0.1);
-    background-color: #ffb347; /* Lighter orange */
-}
+
 
 /* Cards */
 .card {
     background-color: #7e57c2; /* Rich purple */
-    border: 2px solid #ff5f00; /* Orange border */
+
     border-radius: 10px;
     box-shadow: 0 0 10px 5px rgba(0, 0, 0, 0.1);
     padding: 20px;
@@ -64,7 +58,7 @@ form {
 /* --- Form Styling --- */
 form {
     padding: 20px;
-    border: 2px solid #ff5f00; /* Deep Orange */
+   
     border-radius: 10px;
     background-color: #7e57c2; /* Rich Purple */
     box-shadow: 0 0 10px 5px rgba(0, 0, 0, 0.1);

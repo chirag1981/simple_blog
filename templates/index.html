@@ -6,26 +6,81 @@
     <title>Blog App</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="static/main.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="container mt-3">
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    {% endwith %}
+
     <div class="container mt-5">
         <h1 class="mb-3">Let's Share</h1>
-        <a href="{{ url_for('add_post') }}" class="btn btn-primary mb-3">Add New Post</a>
+
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('add_post') }}" class="btn btn-primary mb-3">Add New Post</a>
+            <a href="{{ url_for('logout') }}" class="btn btn-secondary mb-3">Logout</a>
+        {% else %}
+            <a href="{{ url_for('login') }}" class="btn btn-success mb-3">Login</a>
+        {% endif %}
 
         {% for post in posts %}
         <div class="card mb-3">
             <div class="card-body">
                 <h3 class="card-title">{{ post.title }}</h3>
                 <h6 class="text-muted">By {{ post.username }} on {{ post.date.strftime('%Y-%m-%d %H:%M') }}</h6>
-                <p class="card-text">{{ post.content | safe }}</p>  <!-- Displays formatted content with pasted images -->
-                <!-- Edit & Delete Buttons -->
-                <a href="{{ url_for('edit_post', post_id=post.id) }}" class="btn btn-warning btn-sm">Edit</a>
-                <form action="{{ url_for('delete_post', post_id=post.id) }}" method="POST" style="display:inline;">
-                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this post?');">Delete</button>
-                </form>
+                <p class="card-text">{{ post.content | safe }}</p>
+                
+                <!-- Like Button -->
+                <button class="btn btn-outline-primary btn-sm like-btn" data-post-id="{{ post.id }}">Like (<span id="like-count-{{ post.id }}">{{ post.likes }}</span>)</button>
+                
+                <!-- Comment Section -->
+                <div class="mt-3">
+                    <h6>Comments:</h6>
+                    <ul class="list-group">
+                        {% for comment in post.comments %}
+                            <li class="list-group-item">{{ comment.username }}: {{ comment.text }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% if current_user.is_authenticated %}
+                    <form action="{{ url_for('add_comment', post_id=post.id) }}" method="POST" class="mt-2">
+                        <input type="text" name="comment_text" class="form-control" placeholder="Add a comment..." required>
+                        <button type="submit" class="btn btn-primary btn-sm mt-2">Comment</button>
+                    </form>
+                    {% endif %}
+                </div>
+                
+                <!-- Show Edit & Delete only for Admin -->
+                {% if current_user.is_authenticated and current_user.is_admin %}
+                    <a href="{{ url_for('edit_post', post_id=post.id) }}" class="btn btn-warning btn-sm mt-2">Edit</a>
+                    <a href="{{ url_for('delete_post', post_id=post.id) }}" class="btn btn-danger btn-sm mt-2" onclick="return confirm('Are you sure you want to delete this post?');">Delete</a>
+                {% endif %}
             </div>
         </div>
         {% endfor %}
     </div>
+
+    <script>
+        $(document).ready(function() {
+            $(".like-btn").click(function() {
+                var postId = $(this).data("post-id");
+                var likeCount = $("#like-count-" + postId);
+                
+                $.post("/like/" + postId, function(response) {
+                    if (response.success) {
+                        likeCount.text(response.likes);
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>
