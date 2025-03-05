@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from markupsafe import Markup
@@ -27,8 +27,12 @@ class Post(db.Model):
     username = db.Column(db.String(50), nullable=False)
     date = db.Column(db.DateTime, default=datetime.utcnow)
     content = db.Column(db.Text, nullable=False)
-    likes = db.relationship('Like', backref='post', lazy=True)
-    comments = db.relationship('Comment', backref='post', lazy=True)
+    
+    # Add cascade delete to both likes and comments
+    likes = db.relationship('Like', backref='post', lazy=True, cascade="all, delete-orphan")
+    comments = db.relationship('Comment', backref='post', lazy=True, cascade="all, delete-orphan")
+
+
 
 class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -70,21 +74,39 @@ def add_post():
 @app.route('/comment/<int:post_id>', methods=['POST'])
 @login_required
 def add_comment(post_id):
-    content = request.form['content']
-    comment = Comment(post_id=post_id, username=current_user.username, content=content)
+    comment_text = request.form.get('comment_text')  # Use 'comment_text' instead of 'content'
+
+    if not comment_text:
+        flash("Comment cannot be empty!", "danger")
+        return redirect(url_for('index'))
+
+    comment = Comment(post_id=post_id, username=current_user.username, content=comment_text)
     db.session.add(comment)
     db.session.commit()
+    
+    flash("Comment added successfully!", "success")
     return redirect(url_for('index'))
+
+
 
 @app.route('/like/<int:post_id>', methods=['POST'])
 @login_required
 def like_post(post_id):
-    existing_like = Like.query.filter_by(post_id=post_id, user_id=current_user.id).first()
-    if not existing_like:
-        like = Like(post_id=post_id, user_id=current_user.id)
-        db.session.add(like)
-        db.session.commit()
-    return redirect(url_for('index'))
+    post = Post.query.get_or_404(post_id)
+    like = Like.query.filter_by(post_id=post_id, user_id=current_user.id).first()
+
+    if like:
+        db.session.delete(like)  # Unlike if already liked
+        liked = False
+    else:
+        new_like = Like(post_id=post_id, user_id=current_user.id)
+        db.session.add(new_like)
+        liked = True
+
+    db.session.commit()
+    
+    return jsonify({'success': True, 'likes': len(post.likes), 'liked': liked})
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -130,7 +152,8 @@ def delete_post(post_id):
     if not current_user.is_admin:
         flash("Only admins can delete posts!", "danger")
         return redirect(url_for('index'))
-
+    # Delete comments first (if cascade doesn't work)
+    Comment.query.filter_by(post_id=post.id).delete()
     db.session.delete(post)
     db.session.commit()
     flash("Post deleted successfully!", "success")
