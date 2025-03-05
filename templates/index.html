@@ -45,6 +45,7 @@
                 </button>
                 
                 <!-- Comment Section -->
+                <!-- Comment Section -->
                 <div class="mt-3">
                     <h6>Comments:</h6>
                     <ul class="list-group">
@@ -52,13 +53,14 @@
                             <li class="list-group-item">{{ comment.username }}: {{ comment.content }}</li>
                         {% endfor %}
                     </ul>
-                    {% if current_user.is_authenticated %}
+
+                    <!-- Allow Anyone to Comment -->
                     <form action="{{ url_for('add_comment', post_id=post.id) }}" method="POST" class="mt-2">
-                        <input type="text" name="comment_text" class="form-control" placeholder="Add a comment..." required>
+                        <input type="text" name="comment_text" class="form-control mt-2" placeholder="Add a comment..." required>
                         <button type="submit" class="btn btn-primary btn-sm mt-2">Comment</button>
                     </form>
-                    {% endif %}
                 </div>
+
                 
                 <!-- Show Edit & Delete only for Admin -->
                 {% if current_user.is_authenticated and current_user.is_admin %}
@@ -76,25 +78,32 @@
                 var postId = $(this).data("post-id");
                 var likeCount = $("#like-count-" + postId);
                 var button = $(this);
-    
-                $.post("/like/" + postId, function(response) {
-                    if (response.success) {
-                        likeCount.text(response.likes);
-                        
-                        // Toggle button class and text
-                        if (response.liked) {
-                            button.removeClass("btn-outline-primary").addClass("btn-primary");
+        
+                $.post("/like/" + postId)
+                    .done(function(response) {
+                        if (response.success) {
+                            likeCount.text(response.likes);
+                            
+                            // Toggle button class and text
+                            if (response.liked) {
+                                button.removeClass("btn-outline-primary").addClass("btn-primary");
+                            } else {
+                                button.removeClass("btn-primary").addClass("btn-outline-primary");
+                            }
                         } else {
-                            button.removeClass("btn-primary").addClass("btn-outline-primary");
+                            alert(response.error);
                         }
-                    } else {
-                        alert("Error updating like count.");
-                    }
-                }).fail(function() {
-                    alert("Failed to process the request.");
-                });
+                    })
+                    .fail(function(xhr) {
+                        if (xhr.status === 401) {
+                            alert("Please log in to like posts.");
+                        } else {
+                            alert("Error processing request.");
+                        }
+                    });
             });
         });
+        
     </script>
     
 </body>

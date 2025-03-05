@@ -72,15 +72,17 @@ def add_post():
     return render_template('add_post.html')
 
 @app.route('/comment/<int:post_id>', methods=['POST'])
-@login_required
 def add_comment(post_id):
-    comment_text = request.form.get('comment_text')  # Use 'comment_text' instead of 'content'
+    comment_text = request.form.get('comment_text')
 
     if not comment_text:
         flash("Comment cannot be empty!", "danger")
         return redirect(url_for('index'))
 
-    comment = Comment(post_id=post_id, username=current_user.username, content=comment_text)
+    # If user is logged in, use their username; otherwise, set as 'Anonymous'
+    username = current_user.username if current_user.is_authenticated else "Anonymous"
+
+    comment = Comment(post_id=post_id, username=username, content=comment_text)
     db.session.add(comment)
     db.session.commit()
     
@@ -89,23 +91,30 @@ def add_comment(post_id):
 
 
 
+
+from flask_login import current_user
+
 @app.route('/like/<int:post_id>', methods=['POST'])
-@login_required
 def like_post(post_id):
     post = Post.query.get_or_404(post_id)
-    like = Like.query.filter_by(post_id=post_id, user_id=current_user.id).first()
+
+    # Assign a default user_id for anonymous users (e.g., -1 for guest likes)
+    user_id = current_user.id if current_user.is_authenticated else -1
+
+    like = Like.query.filter_by(post_id=post_id, user_id=user_id).first()
 
     if like:
         db.session.delete(like)  # Unlike if already liked
         liked = False
     else:
-        new_like = Like(post_id=post_id, user_id=current_user.id)
+        new_like = Like(post_id=post_id, user_id=user_id)
         db.session.add(new_like)
         liked = True
 
     db.session.commit()
-    
+
     return jsonify({'success': True, 'likes': len(post.likes), 'liked': liked})
+
 
 
 @app.route('/login', methods=['GET', 'POST'])
